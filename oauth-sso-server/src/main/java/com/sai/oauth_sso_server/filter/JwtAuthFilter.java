@@ -16,13 +16,14 @@ import org.springframework.web.filter.OncePerRequestFilter;
 import java.io.IOException;
 import java.util.List;
 import java.util.stream.Collectors;
+import org.springframework.data.redis.core.RedisTemplate;
 
 @Component
 @RequiredArgsConstructor
 public class JwtAuthFilter extends OncePerRequestFilter {
 
     private final TokenService tokenService;
-
+    private final RedisTemplate<String, String> redisTemplate;
     @Override
     protected void doFilterInternal(HttpServletRequest request,
                                     HttpServletResponse response,
@@ -40,6 +41,16 @@ public class JwtAuthFilter extends OncePerRequestFilter {
 
         // 3. Extract the token (remove "Bearer " prefix)
         String token = authHeader.substring(7);
+        // Check Redis blacklist FIRST before validating
+        if (Boolean.TRUE.equals(redisTemplate.hasKey("blacklist:" + token))) {
+            SecurityContextHolder.clearContext();
+            response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
+            response.setContentType("application/json");
+            response.getWriter().write(
+                    "{\"status\":401,\"error\":\"Unauthorized\",\"message\":\"Token has been revoked\"}"
+            );
+            return;
+        }
 
         try {
             // 4. Validate token and extract claims

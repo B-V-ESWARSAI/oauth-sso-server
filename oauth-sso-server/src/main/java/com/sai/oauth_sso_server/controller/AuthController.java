@@ -1,5 +1,6 @@
 package com.sai.oauth_sso_server.controller;
 
+import com.sai.oauth_sso_server.dto.RefreshTokenRequest;
 import com.sai.oauth_sso_server.dto.RegisterRequest;
 import com.sai.oauth_sso_server.model.User;
 import com.sai.oauth_sso_server.service.AuthService;
@@ -38,15 +39,11 @@ public class AuthController {
     }
     @PostMapping("/login")
     public ResponseEntity<?> login(@Valid @RequestBody LoginRequest request) {
-        String accessToken = authService.login(request.getEmail(), request.getPassword());
-
-        Map<String, Object> response = new HashMap<>();
-        response.put("accessToken", accessToken);
-        response.put("tokenType", "Bearer");
-        response.put("expiresIn", 900);
-
-        return ResponseEntity.ok(response);
-
+        Map<String, Object> tokens = authService.login(
+                request.getEmail(),
+                request.getPassword()
+        );
+        return ResponseEntity.ok(tokens);
     }
     @GetMapping("/userinfo")
     public ResponseEntity<?> userInfo(HttpServletRequest request) {
@@ -63,6 +60,25 @@ public class AuthController {
         response.put("fullName", jwt.getClaim("fullName").asString());
         response.put("roles", jwt.getClaim("roles").asList(String.class));
 
+        return ResponseEntity.ok(response);
+    }
+    @PostMapping("/token/refresh")
+    public ResponseEntity<?> refreshToken(
+            @Valid @RequestBody RefreshTokenRequest request) {
+        Map<String, Object> tokens = authService.refreshToken(request.getRefreshToken());
+        return ResponseEntity.ok(tokens);
+    }
+    @PostMapping("/logout")
+    public ResponseEntity<?> logout(HttpServletRequest request) {
+        String authHeader = request.getHeader("Authorization");
+        if (authHeader == null || !authHeader.startsWith("Bearer ")) {
+            throw new IllegalArgumentException("No token provided");
+        }
+        authService.logout(authHeader);
+
+        Map<String, Object> response = new HashMap<>();
+        response.put("message", "Logged out successfully");
+        response.put("status", 200);
         return ResponseEntity.ok(response);
     }
 

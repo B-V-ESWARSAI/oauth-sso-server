@@ -13,6 +13,12 @@ spring:
       hibernate:
         format_sql: true
         dialect: org.hibernate.dialect.PostgreSQLDialect
+  data:
+    redis:
+      host: bisque-rehydrated-illustrious-59650.db.redis.io
+      port: 19740
+      username: default
+      password: ${REDIS_PASSWORD}
 
 server:
   port: 8080
