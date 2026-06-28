@@ -13,13 +13,19 @@ import java.util.Map;
 @RestControllerAdvice
 public class GlobalExceptionHandler {
 
-    // Handles duplicate email → 409 Conflict
+    // Duplicate email, client ID etc → 409 Conflict
     @ExceptionHandler(IllegalStateException.class)
     public ResponseEntity<Map<String, Object>> handleIllegalState(IllegalStateException ex) {
         return buildResponse(HttpStatus.CONFLICT, ex.getMessage());
     }
 
-    // Handles @Valid validation failures → 400 Bad Request
+    // Invalid input, wrong credentials, bad scope etc → 400 Bad Request
+    @ExceptionHandler(IllegalArgumentException.class)
+    public ResponseEntity<Map<String, Object>> handleIllegalArgument(IllegalArgumentException ex) {
+        return buildResponse(HttpStatus.BAD_REQUEST, ex.getMessage());
+    }
+
+    // @Valid annotation failures → 400 Bad Request
     @ExceptionHandler(MethodArgumentNotValidException.class)
     public ResponseEntity<Map<String, Object>> handleValidation(MethodArgumentNotValidException ex) {
         String message = ex.getBindingResult()
@@ -31,16 +37,10 @@ public class GlobalExceptionHandler {
         return buildResponse(HttpStatus.BAD_REQUEST, message);
     }
 
-    // Handles anything else → 500
+    // Anything else → 500
     @ExceptionHandler(Exception.class)
     public ResponseEntity<Map<String, Object>> handleGeneral(Exception ex) {
-        // Temporary: show real error for debugging
-        ex.printStackTrace();
-        return buildResponse(HttpStatus.INTERNAL_SERVER_ERROR, ex.getMessage() + " | " + ex.getClass().getName());
-    }
-    @ExceptionHandler(IllegalArgumentException.class)
-    public ResponseEntity<Map<String, Object>> handleIllegalArgument(IllegalArgumentException ex) {
-        return buildResponse(HttpStatus.UNAUTHORIZED, ex.getMessage());
+        return buildResponse(HttpStatus.INTERNAL_SERVER_ERROR, "Something went wrong");
     }
 
     private ResponseEntity<Map<String, Object>> buildResponse(HttpStatus status, String message) {

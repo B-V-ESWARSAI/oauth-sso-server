@@ -55,6 +55,10 @@ public class SecurityConfig {
                                 "/auth/token/refresh",
                                 "/auth/introspect",
                                 "/auth/jwks",
+                                "/auth/logout",
+                                "/oauth/authorize",
+                                "/oauth/token",
+                                "/oauth/clients/register",
                                 "/actuator/health"
                         ).permitAll()
                         .anyRequest().authenticated()

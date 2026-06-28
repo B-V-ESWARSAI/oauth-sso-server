@@ -10,7 +10,7 @@ import com.sai.oauth_sso_server.repository.RefreshTokenRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
-
+import java.util.List;
 import java.time.LocalDateTime;
 import java.util.Date;
 import java.util.UUID;
@@ -58,5 +58,15 @@ public class TokenService {
         } catch (JWTVerificationException e) {
             throw new IllegalStateException("Invalid or expired token: " + e.getMessage());
         }
+    }
+    public String generateClientToken(String clientId, List<String> scopes) {
+        return JWT.create()
+                .withSubject(clientId)
+                .withClaim("scopes", scopes)
+                .withClaim("type", "client_credentials")
+                .withIssuer("oauth-sso-server")
+                .withIssuedAt(new Date())
+                .withExpiresAt(new Date(System.currentTimeMillis() + accessTokenExpiry))
+                .sign(jwtAlgorithm);
     }
 }
