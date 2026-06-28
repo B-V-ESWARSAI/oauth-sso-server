@@ -6,6 +6,7 @@ import com.sai.oauth_sso_server.model.User;
 import com.sai.oauth_sso_server.service.AuthService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -16,6 +17,10 @@ import com.auth0.jwt.interfaces.DecodedJWT;
 import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.security.core.context.SecurityContextHolder;
 import com.sai.oauth_sso_server.service.TokenService;
+import java.util.Base64;
+import java.util.List;
+
+
 @RestController
 @RequestMapping("/auth")
 @RequiredArgsConstructor
@@ -23,6 +28,9 @@ public class AuthController {
 
     private final AuthService authService;
     private final TokenService tokenService;
+    private final RedisTemplate<String, String> redisTemplate;
+//    private final TokenService tokenService;
+private final java.security.interfaces.RSAPublicKey rsaPublicKey;
 
     @PostMapping("/register")
     public ResponseEntity<?> register(@Valid @RequestBody RegisterRequest request) {
@@ -79,6 +87,59 @@ public class AuthController {
         Map<String, Object> response = new HashMap<>();
         response.put("message", "Logged out successfully");
         response.put("status", 200);
+        return ResponseEntity.ok(response);
+    }
+    @PostMapping("/introspect")
+    public ResponseEntity<?> introspect(@RequestBody Map<String, String> request) {
+        String token = request.get("token");
+        Map<String, Object> response = new HashMap<>();
+
+        if (token == null || token.isBlank()) {
+            response.put("active", false);
+            return ResponseEntity.ok(response);
+        }
+
+        // Check blacklist first
+        if (Boolean.TRUE.equals(redisTemplate.hasKey("blacklist:" + token))) {
+            response.put("active", false);
+            return ResponseEntity.ok(response);
+        }
+
+        try {
+            DecodedJWT jwt = tokenService.validateToken(token);
+            response.put("active", true);
+            response.put("sub", jwt.getSubject());
+            response.put("email", jwt.getClaim("email").asString());
+            response.put("roles", jwt.getClaim("roles").asList(String.class));
+            response.put("fullName", jwt.getClaim("fullName").asString());
+            response.put("exp", jwt.getExpiresAt().getTime() / 1000);
+            response.put("iss", jwt.getIssuer());
+        } catch (Exception e) {
+            response.put("active", false);
+        }
+
+        return ResponseEntity.ok(response);
+    }
+    @GetMapping("/jwks")
+    public ResponseEntity<?> jwks() throws Exception {
+        java.security.interfaces.RSAPublicKey publicKey =
+                (java.security.interfaces.RSAPublicKey) rsaPublicKey;
+
+        String n = Base64.getUrlEncoder().withoutPadding()
+                .encodeToString(publicKey.getModulus().toByteArray());
+        String e = Base64.getUrlEncoder().withoutPadding()
+                .encodeToString(publicKey.getPublicExponent().toByteArray());
+
+        Map<String, Object> key = new HashMap<>();
+        key.put("kty", "RSA");
+        key.put("use", "sig");
+        key.put("alg", "RS256");
+        key.put("n", n);
+        key.put("e", e);
+
+        Map<String, Object> response = new HashMap<>();
+        response.put("keys", List.of(key));
+
         return ResponseEntity.ok(response);
     }
 
