@@ -21,7 +21,7 @@ spring:
       password: ${REDIS_PASSWORD}
 
 server:
-  port: 8080
+  port: ${PORT:8080}
 jwt:
   private-key: ${JWT_PRIVATE_KEY}
   public-key: ${JWT_PUBLIC_KEY}
