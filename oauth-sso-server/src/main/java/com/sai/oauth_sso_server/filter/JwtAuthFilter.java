@@ -24,6 +24,7 @@ public class JwtAuthFilter extends OncePerRequestFilter {
 
     private final TokenService tokenService;
     private final RedisTemplate<String, String> redisTemplate;
+
     @Override
     protected void doFilterInternal(HttpServletRequest request,
                                     HttpServletResponse response,
@@ -33,6 +34,9 @@ public class JwtAuthFilter extends OncePerRequestFilter {
         // 1. Get Authorization header
         String authHeader = request.getHeader("Authorization");
 
+        // DEBUG LINE - remove after troubleshooting
+        System.out.println("=== DEBUG: URI=" + request.getRequestURI() + " | AuthHeader=" + authHeader + " ===");
+
         // 2. If no header or doesn't start with Bearer → skip filter
         if (authHeader == null || !authHeader.startsWith("Bearer ")) {
             filterChain.doFilter(request, response);
@@ -41,6 +45,7 @@ public class JwtAuthFilter extends OncePerRequestFilter {
 
         // 3. Extract the token (remove "Bearer " prefix)
         String token = authHeader.substring(7);
+
         // Check Redis blacklist FIRST before validating
         if (Boolean.TRUE.equals(redisTemplate.hasKey("blacklist:" + token))) {
             SecurityContextHolder.clearContext();
@@ -69,8 +74,8 @@ public class JwtAuthFilter extends OncePerRequestFilter {
                     new UsernamePasswordAuthenticationToken(userId, null, authorities);
 
             SecurityContextHolder.getContext().setAuthentication(authentication);
-
         } catch (Exception e) {
+
             // 7. Invalid token → clear context, return 401
             SecurityContextHolder.clearContext();
             response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);

@@ -10,16 +10,16 @@ import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
-import java.util.HashMap;
-import java.util.Map;
+
+import java.util.*;
+
 import com.sai.oauth_sso_server.dto.LoginRequest;
 import com.auth0.jwt.interfaces.DecodedJWT;
 import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.security.core.context.SecurityContextHolder;
 import com.sai.oauth_sso_server.service.TokenService;
-import java.util.Base64;
+import com.sai.oauth_sso_server.repository.UserRepository;
 import java.util.List;
-
 
 @RestController
 @RequestMapping("/auth")
@@ -31,7 +31,7 @@ public class AuthController {
     private final RedisTemplate<String, String> redisTemplate;
 //    private final TokenService tokenService;
 private final java.security.interfaces.RSAPublicKey rsaPublicKey;
-
+    private final UserRepository userRepository;
     @PostMapping("/register")
     public ResponseEntity<?> register(@Valid @RequestBody RegisterRequest request) {
         User savedUser = authService.register(request);
@@ -140,6 +140,38 @@ private final java.security.interfaces.RSAPublicKey rsaPublicKey;
         Map<String, Object> response = new HashMap<>();
         response.put("keys", List.of(key));
 
+        return ResponseEntity.ok(response);
+    }
+    @GetMapping("/admin/users")
+    public ResponseEntity<?> getAllUsers() {
+        return ResponseEntity.ok(userRepository.findAll()
+                .stream()
+                .map(u -> {
+                    Map<String, Object> user = new HashMap<>();
+                    user.put("id", u.getId());
+                    user.put("email", u.getEmail());
+                    user.put("fullName", u.getFullName());
+                    user.put("roles", u.getRoles());
+                    user.put("isActive", u.isActive());
+                    return user;
+                })
+                .toList()
+        );
+    }
+
+    @PutMapping("/admin/users/{id}/roles")
+    public ResponseEntity<?> updateRoles(
+            @PathVariable String id,
+            @RequestBody Map<String, List<String>> request) {
+        User user = userRepository.findById(UUID.fromString(id))
+                .orElseThrow(() -> new IllegalArgumentException("User not found"));
+        user.setRoles(request.get("roles"));
+        userRepository.save(user);
+
+        Map<String, Object> response = new HashMap<>();
+        response.put("message", "Roles updated successfully");
+        response.put("userId", id);
+        response.put("roles", user.getRoles());
         return ResponseEntity.ok(response);
     }
 
