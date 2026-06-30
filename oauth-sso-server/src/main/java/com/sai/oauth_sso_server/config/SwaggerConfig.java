@@ -27,5 +27,6 @@ public class SwaggerConfig {
                                         .bearerFormat("JWT")
                         )
                 );
+        // No .servers() call — Swagger will auto-detect from the request
     }
 }
